@@ -54,6 +54,11 @@ MODULE_VERSION("0.0");
 
 #define KERN_CONT   ""
 
+#define FALSE             0
+#define TRUE              1
+
+// DHCP defs
+
 #define IP_HDR_LEN      20
 #define UDP_HDR_LEN     8
 #define TOT_HDR_LEN     28
@@ -67,6 +72,9 @@ MODULE_VERSION("0.0");
 #define DHCP_OPTION_FIELD   (0)
 #define DHCP_FILE_FIELD     (1)
 #define DHCP_SNAME_FIELD    (2)
+
+#define ETHERNET_HARDWARE_ADDRESS            1     /* used in htype field of dhcp packet */
+#define ETHERNET_HARDWARE_ADDRESS_LENGTH     6     /* length of Ethernet hardware addresses */
 
 
 // struct from freeradius.org - proto_dhcp/dhcp.c
@@ -304,7 +312,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 
 
 /*
- * is_thg540 - check if a mac address is a Thonson THG540 eMTA cable modem
+ * is_thg540 - check if a mac address is a Thomson THG540 eMTA cable modem
  *             *chaaddr - pointer to a hardware address (ethernet MAC)
  *             return TRUE , FALSE
  */ 
@@ -312,7 +320,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 int8_t is_thg540(uint8_t *chaddr) {
 
 	//THG540 OUI TABLE
-	//  all OUIs of the Thonsom THG540 that we have
+	//  all OUIs of the Thomson THG540 that we have:
 	//  0011e3, 00189b, 001e69 and 0024d1
         uint8_t *thg540[] =  { "\x00\x11\xe3",
                                "\x00\x18\x9b",
