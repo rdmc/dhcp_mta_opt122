@@ -1,6 +1,6 @@
 EXTRA_CFLAGS 	+= -o2 -Wall -I..
 
-obj-m += dhcp_emta_opt122.o
+obj-m += dhcp_mta_opt122.o
 #obj-m += m0.o
 
 all:

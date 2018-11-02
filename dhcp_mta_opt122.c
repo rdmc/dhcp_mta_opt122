@@ -107,6 +107,7 @@ typedef struct dhcp_option_t {
 static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
                 unsigned int option);               
 
+static int8_t is_thg540(uint8_t *chaddr);
 
 static unsigned int out_hookfn(unsigned int hooknum,            //"const struct nf_hook_ops *ops" for kernel > 2.6.2x
                         struct sk_buff *skb,                  //""struct sk_buf*"  for kernel > 2.6.2x
@@ -317,7 +318,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
  *             return TRUE , FALSE
  */ 
 
-int8_t is_thg540(uint8_t *chaddr) {
+static int8_t is_thg540(uint8_t *chaddr) {
 
 	//THG540 OUI TABLE
 	//  all OUIs of the Thomson THG540 that we have:
