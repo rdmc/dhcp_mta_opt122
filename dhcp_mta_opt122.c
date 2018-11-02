@@ -9,9 +9,9 @@
  * it under the terms of the GNU General Public Licence version 2 as
  * published by the Free Software Fundadtion. 
  * 
- * "dhcp_EMTA_opt122" is a netfilter hock kernel module that
+ * "dhcp_mta_opt122" is a netfilter hock kernel module that
  * for any packet, check if it is a DHCP (udp 67), and if the yiaddr
- * is in owers MTAs neteworks (10.98.0.0/16). Then check if it have
+ * is in ours MTAs netework (10.98.0.0/16). Then check if it have
  * the option 122 sub option 3 and 6, and change to TPS Kerneros Realm form "BASIC.1" to "HYBRID.2"
  * default action is to let all packets thruogh.
  *
@@ -301,6 +301,37 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 
         return NULL;
 }
+
+
+/*
+ * is_thg540 - check if a mac address is a Thonson THG540 eMTA cable modem
+ *             *chaaddr - pointer to a hardware address (ethernet MAC)
+ *             return TRUE , FALSE
+ */ 
+
+int8_t is_thg540(uint8_t *chaddr) {
+
+	//THG540 OUI TABLE
+	//  all OUIs of the Thonsom THG540 that we have
+	//  0011e3, 00189b, 001e69 and 0024d1
+        uint8_t *thg540[] =  { "\x00\x11\xe3",
+                               "\x00\x18\x9b",
+                               "\x00\x1e\x69",
+                               "\x00\x24\xd1" };
+
+        size_t thg540_len =  sizeof(thg540)/sizeof(thg540[0]);
+        uint8_t *p;
+
+        for (int i = 0; i < thg540_len; i++) {
+                p =  thg540[i];
+                if (chaddr[0] == p[0] &&
+                    chaddr[1] == p[1] &&
+                    chaddr[2] == p[2])
+                        return TRUE;
+        }
+        return FALSE;
+}
+
 
 
 /*
