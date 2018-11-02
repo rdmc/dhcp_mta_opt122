@@ -103,6 +103,16 @@ typedef struct dhcp_option_t {
 } dhcp_option_t;
 
 
+
+
+// OPTION 122
+static   uint8_t *opt122_basic = "\172\024\003\017mps0.cabotva.net\006\007BASIC.1";
+        	 //opt 122,len 28, sub-opt 3, len 15, "mps0.cabota.net", sup-opt 6, len 7, "BASIC.1"
+
+static  uint8_t *opt122_hybrid = "\x7a\x1d\x03\x0emps.cabotva.net\x06\x08HYBRID.2";
+                 //opt 122,len 28, sub-opt 3, len 14=x0f, "mps.cabota.net", sup-opt=6, len=8, "HYBRID.2"
+
+
 // forward declarations
 static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
                 unsigned int option);               
