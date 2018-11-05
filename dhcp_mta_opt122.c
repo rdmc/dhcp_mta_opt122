@@ -341,10 +341,13 @@ static int8_t is_thg540(uint8_t *chaddr) {
         size_t thg540_len =  sizeof(thg540)/sizeof(thg540[0]);
         uint8_t *p;
 	size_t i;
+	
+	if (chaddr[0] == '\x00')
+		return FALSE;
 
         for (i = 0; i < thg540_len; i++) {
                 p =  thg540[i];
-                if (chaddr[0] == p[0] &&
+                if ( // chaddr[0] == p[0] &&
                     chaddr[1] == p[1] &&
                     chaddr[2] == p[2])
                         return TRUE;
