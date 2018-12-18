@@ -173,7 +173,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
   		return NF_ACCEPT;                
 
 		
-        mac = &(dhcp->chaddr); 
+        mac = dhcp->chaddr; 
 	
 	if (is_thg540(mac) == FALSE) 
   		return NF_ACCEPT;                
