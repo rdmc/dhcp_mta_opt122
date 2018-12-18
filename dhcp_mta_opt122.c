@@ -342,6 +342,8 @@ static int8_t is_thg540(uint8_t *chaddr) {
         uint8_t *p;
 	size_t i;
 	
+	// as all OUI have the '00' int the1st octet.
+	// discart all non '00' starting MACs
 	if (chaddr[0] == '\x00')
 		return FALSE;
 
