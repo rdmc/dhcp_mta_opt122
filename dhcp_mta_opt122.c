@@ -103,14 +103,17 @@ typedef struct dhcp_option_t {
 } dhcp_option_t;
 
 
-
-
 // OPTION 122
-static   uint8_t *opt122_basic = "\172\024\003\017mps0.cabotva.net\006\007BASIC.1";
-        	 //opt 122,len 28, sub-opt 3, len 15, "mps0.cabota.net", sup-opt 6, len 7, "BASIC.1"
+static uint8_t *opt122_init =   "\x7A\x20";
 
-static  uint8_t *opt122_hybrid = "\x7a\x1d\x03\x0emps.cabotva.net\x06\x08HYBRID.2";
-                 //opt 122,len 28, sub-opt 3, len 14=x0f, "mps.cabota.net", sup-opt=6, len=8, "HYBRID.2"
+
+static uint8_t *opt122_basic =  "\x03\x13\x00\004mps0\007CABOTVA\003NET\x00"
+                                "\x06\x09\005BASIC\001\x31\x00";
+
+
+static uint8_t *opt122_hybrid = "\x03\x12\x00\003mps\007CABOTVA\003NET\x00"
+                                "\x06\x0a\006HYBRID\001\x32\x00";
+uint8_t  opt122_len = 0x20;
 
 
 // forward declarations
@@ -131,6 +134,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
         struct dhcp_packet  *dhcp;      
         uint8_t *data;
         uint8_t *opt;    
+	uint8_t *mac;
         size_t  udp_len, iph_len, dhcp_len;
 
         union ipv4 {
@@ -150,97 +154,91 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
         iph_len = iph->ihl * 4;                    
         udph = (struct udphdr *) skb_header_pointer (skb, iph_len, 0, NULL);                        
 
-        // dhcp /bootps ?
-        if (udph && (ntohs(udph->source) == 67)) {
+        // dhcp/bootps ?
+        //if ((udph == NULL) || (ntohs(udph->source) != 67)) 	
+        if (!udph || (ntohs(udph->source) != 67)) 	
+		return NF_ACCEPT;
 
+        data = (uint8_t *) skb->data + iph_len + sizeof(struct udphdr);
+        dhcp = (struct dhcp_packet *) data;
+        dhcp_len = skb->len - iph_len - sizeof(struct udphdr);
+                
+        if (dhcp_len < 300)     // ignore dhcp packet too short
+                return NF_ACCEPT;
+        
+        yiaddr.ip = dhcp->yiaddr;
+
+        // for a mta ? (yiaddr in MTA/VoIP range "10.98.x.x")
+        if ((yiaddr.data[0] != 10) || (yiaddr.data[1] != 98))
+  		return NF_ACCEPT;                
+
+		
+        mac = &(dhcp->chaddr); 
+	
+	if (is_thg540(mac) == FALSE) 
+  		return NF_ACCEPT;                
+
+	// adicional check .......
+	// check by HE (Faial and/or Terceira)
+	
+	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac); 
+	
+	// early return for testing
+  	return NF_ACCEPT;                
+
+	// is the a thg520 !!!!
+	//
+
+                        
+        //  with dhcp option 122, and have the expected len ?
+        opt = dhcp_get_option(dhcp, dhcp_len, 122);
+        if (opt && (opt[1] = opt122_len)) {
+                               
+
+		/// 
+
+		//printk(KERN_INFO "dhcp_cm_opt122: got dhcp packt with opt 122.\n"); 
+
+                if (! skb_make_writable(skb, skb->len)) {
+                       	//printk(KERN_INFO "dhcp_cm_opt122: skb_make_writable Failed.\n"); 
+                        return NF_ACCEPT;
+                }
+
+                // re-fetch the skb->data pointers after skb_make_writable
+                iph = (struct iphdr *) skb_header_pointer (skb, 0, 0, NULL);                        
+                iph_len = iph->ihl * 4;                                
+                
+                udph = (struct udphdr *) skb_header_pointer (skb, iph_len, 0, NULL);
+                udp_len = skb->len - iph_len;
+                                
                 data = (uint8_t *) skb->data + iph_len + sizeof(struct udphdr);
                 dhcp = (struct dhcp_packet *) data;
                 dhcp_len = skb->len - iph_len - sizeof(struct udphdr);
-                
-                if (dhcp_len < 300)     // ignore dhcp packet too short
-                        return NF_ACCEPT;
-        
-                yiaddr.ip = dhcp->yiaddr;
-
-                // for a cable modem ? (yiaddr in CM ranges)
-                if ((yiaddr.data[0] == 10) && ((yiaddr.data[1] & 0xFE) == 212))  {                
-                        
-                        // have dhcp option 122, suboption 1 ?
-                        opt = dhcp_get_option(dhcp, dhcp_len, 122);
-                        if (opt && (opt[1] >= 6) && (opt[2] == 1) && (opt[3] == 4)) {
-                               
-				//printk(KERN_INFO "dhcp_cm_opt122: got dhcp packt with opt 122.\n"); 
-
-                                if (! skb_make_writable(skb, skb->len)) {
-                                        //printk(KERN_INFO "dhcp_cm_opt122: skb_make_writable Failed.\n"); 
-                                        return NF_ACCEPT;
-                                }
-                                // re-fetch the skb->data pointers after skb_make_writable
-
-                                iph = (struct iphdr *) skb_header_pointer (skb, 0, 0, NULL);                        
-                                iph_len = iph->ihl * 4;                                
-                
-                                udph = (struct udphdr *) skb_header_pointer (skb, iph_len, 0, NULL);
-                                udp_len = skb->len - iph_len;
-                                
-                                data = (uint8_t *) skb->data + iph_len + sizeof(struct udphdr);
-                                dhcp = (struct dhcp_packet *) data;
-                                dhcp_len = skb->len - iph_len - sizeof(struct udphdr);
                                               
-                                yiaddr.ip = dhcp->yiaddr;
+                mac = dhcp->chaddr; 
                                 
-                                opt = dhcp_get_option(dhcp, dhcp_len, 122);                                
-                                if ((opt == NULL) || (opt[1] < 6) || (opt[2] != 1) || (opt[3] != 4)) {
-                                        // WTF ? 
-                                        return NF_ACCEPT;
-                                }
+                opt = dhcp_get_option(dhcp, dhcp_len, 122);                                
+                if ((opt == NULL) || (opt[1] != opt122_len)) {
+                       	// WTF ? 
+                        return NF_ACCEPT;
+                }
+				
+		// DO MEM COPY !!!!!
 
-				/*
-				// v1:
-                                // rewrite dhcp option  122 suboption 1 
-                                //  Primary DHCP Server - 10.x.0.1
-                                opt[4] = 10;   
-                                opt[5] = yiaddr.data[1];
-                                opt[6] = 0;
-                                opt[7] = 1;
-				*/                                  
-                               
-				// v2:
-                                // rewrite dhcp option  122 suboption 1 
-                                //  Primary DHCP Server - 2x 10.212.x.1/17 and 4x 10.213.x.1/18
- 
-                                //v3:
-                                // rewrite dhcp option  122 suboption 1
-                                // Primary DHCP Server - 1x 10.212.0.1/16 and 4x 10.213.x.1/18
-
-                                opt[4] = 10;   
-                                opt[5] = yiaddr.data[1];								
-                                opt[6] = yiaddr.data[2] & 0x80;
-				if (yiaddr.data[1] == 212) {
-	                        	/* opt[6] = yiaddr.data[2] & 0x80; */
-	                        	opt[6] = yiaddr.data[2] & 0x00;
-				} 
-				else { // tiaddr.data[1]== 213
-                                	opt[6] = yiaddr.data[2] & 0xC0;
-				}
-                                opt[7] = 1;
                                                                  
                                            
-                                // calculete upd checksum
+                // calculete upd checksum
                                 
-                                /*  Don't care...
-                                udph->check = 0;
-                                udph->check = csum_tcpudp_magic(iph->saddr, iph->daddr, 
-                                                                 udp_len, IPPROTO_UDP, 
-                                                                 csum_partial((unsigned char *)udph, udp_len, 0)); 
-                                */
+                /*  Don't care...
+                udph->check = 0;
+                udph->check = csum_tcpudp_magic(iph->saddr, iph->daddr, 
+                                                udp_len, IPPROTO_UDP, 
+                                                csum_partial((unsigned char *)udph, udp_len, 0)); 
+                */
                                         
+              		          
+        } // has opt 122 l                              
                         
-                        } // has opt 122 sub 1                              
-
-                } // yiaddr for a Cable Modem         
-                        
-        } // dhcp pkt
 
 //accept:
        return NF_ACCEPT;
