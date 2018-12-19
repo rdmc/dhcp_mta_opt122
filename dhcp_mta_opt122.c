@@ -18,21 +18,6 @@
  */
  
 
-//TODO
-// como o tamanho ad subopcão 122.6 'e diferente "BASIC.1" (9) e "HYBRID.2" (10) sugiro:
-// na option 122 (31 bytes) 122.3 "mps.CABOTVA.NET" (18 bytes), alterar para 
-// "mps0.CABOTVA.NET" (18 bytes)e shiftar à esquerda 1 byte a partir do "0", no "HYBRID.2"  ficando "mps.CABOTVA.NET" (17 bytes) 
-// evitando ter de alterar a alocação de  memoria, que é sempre um assunto "melindroso". 
-// Cariar e testar no DNS o A RECORD "mps0" no dominio "CABOTVA.NET#
-// TLV:	122,32,3,18,"mps0.CABOTVA.NET",6,9,"BASIC.1" para:
-//  	122,32,3,17,"mps.CABOTVA.NET",6,10,"HYBRID.2" ficando tudo o resto igual
-//  	XXXXXXXXXXXXXXXXX esto so seria alerado casso recebermos na opcao 43.9 "THG540" (NOTA 2)
-//  	infelizmente a 43.9 so é mandada nos pedidos docsis.* e não nos de pckt*
-//  	sendo assim, so mesmo criando uma tabela de todos os OUIs dos THG540 ex: "00189b"
-//  ROSA: arranjamos uma lista is OUIs de todos os thomson ???
-//      garantimos que não existem hitrons v3 e v4 (ZONHUBS) com estes OUIs ?????
-
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netfilter.h>
@@ -46,13 +31,16 @@
 #include <net/ip.h>
 #include <net/checksum.h>
 
-
 MODULE_AUTHOR("rdmc, ricardo.cabrl@nos-acores.pt");
 MODULE_DESCRIPTION("DHCP Opt 122 Subopt 6 Packet Mangling for eMTAs");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.0");
 
 #define KERN_CONT   ""
+
+/*
+ * defines
+ */ 
 
 #define FALSE             0
 #define TRUE              1
@@ -75,6 +63,7 @@ MODULE_VERSION("0.0");
 
 #define ETHERNET_HARDWARE_ADDRESS            1     /* used in htype field of dhcp packet */
 #define ETHERNET_HARDWARE_ADDRESS_LENGTH     6     /* length of Ethernet hardware addresses */
+#define ETH_ALEN     			     6     /* ... same*/
 
 
 // struct from freeradius.org - proto_dhcp/dhcp.c
@@ -102,14 +91,21 @@ typedef struct dhcp_option_t {
         uint8_t     length;
 } dhcp_option_t;
 
+// mac 
+typedef struct mac {
+	uint8_t data[ETH_ALEN];
+} mac_t;
+
+
 
 // OPTION 122
-static uint8_t *opt122_init =   "\x7A\x20";
+#define	PACKETCABLE	(122)		// dhcp option 122. PACKET CABLE VoIP RFC 
 
+
+static uint8_t *opt122_init =   "\x7A\x20";
 
 static uint8_t *opt122_basic =  "\x03\x13\x00\004mps0\007CABOTVA\003NET\x00"
                                 "\x06\x09\005BASIC\001\x31\x00";
-
 
 static uint8_t *opt122_hybrid = "\x03\x12\x00\003mps\007CABOTVA\003NET\x00"
                                 "\x06\x0a\006HYBRID\001\x32\x00";
@@ -134,13 +130,15 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
         struct dhcp_packet  *dhcp;      
         uint8_t *data;
         uint8_t *opt;    
-	uint8_t *mac;
+	//uint8_t *mac_ptr;
         size_t  udp_len, iph_len, dhcp_len;
 
         union ipv4 {
                 uint32_t ip;
                 uint8_t  data[4];
-        } yiaddr;       
+        } yiaddr;       // working yiaddr	
+
+	mac_t mac;	// working mac
 
         if ((skb == NULL ) || (skb_linearize(skb) < 0)) 
                 return NF_ACCEPT;
@@ -172,16 +170,19 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
         if ((yiaddr.data[0] != 10) || (yiaddr.data[1] != 98))
   		return NF_ACCEPT;                
 
+	// populate working mac
+	memcpy(mac.data, dhcp->chaddr, ETH_ALEN);
+
 		
-        mac = dhcp->chaddr; 
+      	// mac = dhcp->chaddr; 
 	
-	if (is_thg540(mac) == FALSE) 
+	if (is_thg540(mac.data) == FALSE) 
   		return NF_ACCEPT;                
 
 	// adicional check .......
 	// check by HE (Faial and/or Terceira)
 	
-	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac); 
+	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac.data); 
 	
 	// early return for testing
   	return NF_ACCEPT;                
@@ -192,7 +193,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                         
         //  with dhcp option 122, and have the expected len ?
         opt = dhcp_get_option(dhcp, dhcp_len, 122);
-        if (opt && (opt[1] = opt122_len)) {
+        if (opt && (opt[0] == 122) && opt[1] == opt122_len ) {
                                
 
 		/// 
@@ -203,8 +204,10 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                        	//printk(KERN_INFO "dhcp_cm_opt122: skb_make_writable Failed.\n"); 
                         return NF_ACCEPT;
                 }
-
-                // re-fetch the skb->data pointers after skb_make_writable
+	
+		/*
+                 *  re-fetch the skb->data pointers after skb_make_writable
+                 */
                 iph = (struct iphdr *) skb_header_pointer (skb, 0, 0, NULL);                        
                 iph_len = iph->ihl * 4;                                
                 
@@ -215,7 +218,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                 dhcp = (struct dhcp_packet *) data;
                 dhcp_len = skb->len - iph_len - sizeof(struct udphdr);
                                               
-                mac = dhcp->chaddr; 
+                //mac = dhcp->chaddr; not needed
                                 
                 opt = dhcp_get_option(dhcp, dhcp_len, 122);                                
                 if ((opt == NULL) || (opt[1] != opt122_len)) {
@@ -225,7 +228,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 				
 		// DO MEM COPY !!!!!
 
-                                                                 
+                memcpy(opt                                                 
                                            
                 // calculete upd checksum
                                 
@@ -342,7 +345,7 @@ static int8_t is_thg540(uint8_t *chaddr) {
 	
 	// as all OUI have the '00' int the1st octet.
 	// discart all non '00' starting MACs
-	if (chaddr[0] == '\x00')
+	if (chaddr[0] != '\x00')
 		return FALSE;
 
         for (i = 0; i < thg540_len; i++) {

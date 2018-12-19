@@ -100,22 +100,32 @@ mac_t mac_list[] = {
    	{"\x00\x18\x9B\x8A\x6E\x1D"},
   	{"\x00\x18\x9B\x8A\xAF\x7E"} 	};	
 
+//#include "thg540_migration.c"
+
 size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 
-mac_t my_mac = {"\x00\x18\x9b\x4a\x1b\x99"};
+mac_t my_mac = {"\x00\x18\x9b\x4a\x1b\x49"};
+
+//#define TESTE	(123)		// test comment
 
 
-//memcpy(discover_packet.chaddr,client_hardware_address,ETHERNET_HARDWARE_ADDRESS_LENGTH);
+char buf[1024];
 
 
 // forward refs
 //int8_t is_thg540(uint8_t *chaddr);
-int8_t is_thg540(mac_t *m);
-int8_t maccmp(mac_t*  m1, mac_t* m2);
-int8_t mac_inlist(mac_t* m);
+int  is_thg540(mac_t *m);
+int  maccmp(mac_t*  m1, mac_t* m2);
+int  mac_inlist(mac_t* m);
+char *mac_print(mac_t* m); 
 
 
 int main(int argc, char** argv) {
+
+//	printf("teste = %d\n", TESTE);
+
+
+	printf("my_mac = %s\n", mac_print(&my_mac));
 
 	if (is_thg540(&my_mac) == TRUE) {
 		printf("mac is a THG540.\n");
@@ -123,12 +133,13 @@ int main(int argc, char** argv) {
 		printf("mac OUI unknow.\n");
 	}
 
-/*
+
 	printf("mac_list size: %d\n", mac_list_len);
 	int i;
-	for (i = 0; i < mac_list_len; i++)
-		printf("%d\n", maccmp(&my_mac, &mac_list[i]));
-*/
+	for (i = 0; i < mac_list_len; i++) {
+		printf("mac_list[%03d]=%s, maccmp=%d\n", i, mac_print(&mac_list[i]), maccmp(&my_mac, &mac_list[i]));
+	}
+
 
 	if (mac_inlist(&my_mac) == TRUE) {
 		printf("mac is in the list.\n");
@@ -136,12 +147,33 @@ int main(int argc, char** argv) {
 		printf("mac unknow.\n");
 	}
 
-
 	// bye, bye
 	return 0;
 }
 
-int8_t mac_inlist(mac_t* m)
+
+//
+// char*  mac_print(mac_t* m) 
+//
+char*  mac_print(mac_t* m) 
+{
+	if (!m){
+		sprintf(buf, "<NULL>");
+		
+	} else {
+		sprintf(buf, "%p->[%02x:%02x:%02x:%02x:%02x:%02x]", m,  
+				m->data[0], m->data[1], m->data[2], 
+				m->data[3], m->data[4], m->data[5] );
+	}
+	return buf;
+
+}
+
+
+
+// int  mac_inlist(mac_t* m)
+// 
+int  mac_inlist(mac_t* m)
 {
 	int i;
 	for (i = 0; i < mac_list_len; i++)
@@ -150,42 +182,56 @@ int8_t mac_inlist(mac_t* m)
 	return FALSE;
 }
 
-int8_t maccmp(mac_t*  m1, mac_t* m2)
+//
+// int  maccmp(mac_t*  m1, mac_t* m2) 
+//
+int  maccmp(mac_t*  m1, mac_t* m2)
 {
-	if (!m1 || !m2) return -1;
-	return memcmp(m1->data, m2->data, ETH_ALEN);
+	if (!m1 || !m2) 
+		return  -1;
+
+	return  memcmp(m1->data, m2->data, ETH_ALEN);
 }
 
 
-
-int8_t is_thg540(mac_t *m)
+//
+// is_thg540 - check if a mac address is a Thomson THG540 eMTA cable modem
+//             *chaaddr - pointer to a hardware address (ethernet MAC)
+//             return TRUE , FALSE
+//
+int is_thg540(mac_t *m)
 {
 	uint8_t *chaddr;
+	uint8_t *p;
+	size_t  i;
 	
-	if (!m) return FALSE;
-	chaddr = m->data;
-
 	//THG540 OUI TABLE
 	uint8_t *thg540[] =  { "\x00\x18\x9b",
 		   	       "\x00\x1e\x99",
 			       "\x00\x25\xab" }; 
-
 	size_t thg540_len =  sizeof(thg540)/sizeof(thg540[0]);
 	
-	uint8_t *p;
+	
+	if (!m) return FALSE;	
+	chaddr = m->data;
 
-	for (int i = 0; i < thg540_len; i++) {
+	// as all thg540 OUI have '00' in it's 1st octet.
+	// discart all non '00' starting MACs	 
+	if (chaddr[0] != '\x00')
+		return FALSE; 
+
+	for (i = 0; i < thg540_len; i++) {
 		p =  thg540[i];
-		if (chaddr[0] == p[0] && 
+		if (	// chaddr[0] == p[0] && 
 		    chaddr[1] == p[1] && 
-		    chaddr[2] == p[2])
+		    chaddr[2] == p[2] )
 			return TRUE;
 	}
 	return FALSE;
 }
 
 
-// int8_t is_is_
+// EOF
 
 
 
