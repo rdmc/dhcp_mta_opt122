@@ -16,7 +16,6 @@
  * default action is to let all packets thruogh.
  *
  */
- 
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -91,33 +90,126 @@ typedef struct dhcp_option_t {
         uint8_t     length;
 } dhcp_option_t;
 
-// mac 
+/*
+ *  MAC
+ *  type and mac list
+ */ 
+
 typedef struct mac {
 	uint8_t data[ETH_ALEN];
 } mac_t;
 
+/*
+ *  mac_list
+ *  list of all thg540 for migration.
+ *  if it gets too big, incluide as an expernal file.
+ *  ex: #include "thg540_migration.h"
+ */
+
+static mac_t mac_list[] = {
+        {"\x00\x18\x9B\x4A\x1B\x31"},
+        {"\x00\x18\x9B\x4A\x1B\x3D"},
+        {"\x00\x18\x9B\x4A\x1B\x49"},
+        {"\x00\x18\x9B\x4A\x1B\x59"},	// my test modem!!!!
+        {"\x00\x18\x9B\x5D\xFE\x20"},
+        {"\x00\x18\x9B\x87\x16\x09"},
+        {"\x00\x18\x9B\x89\x81\x47"},
+        {"\x00\x18\x9B\x89\xF5\xDE"},
+        {"\x00\x18\x9B\x8A\x50\x8C"},
+        {"\x00\x18\x9B\x8A\x6E\x1D"},
+        {"\x00\x18\x9B\x8A\xAF\x7E"},
+        {"\x00\x18\x9B\x8C\xED\x8C"},
+        {"\x00\x18\x9B\x8D\x12\x16"},
+        {"\x00\x18\x9B\x8E\x1E\x75"},
+        {"\x00\x18\x9B\x8E\x60\x87"},
+        {"\x00\x18\x9B\x91\x43\x02"},
+        {"\x00\x18\x9B\x94\x4F\x29"},
+        {"\x00\x18\x9B\x94\xB3\x1C"},
+        {"\x00\x18\x9B\x94\xBC\x46"},
+        {"\x00\x18\x9B\x95\x1E\x92"},
+        {"\x00\x18\x9B\x95\x32\x99"},
+        {"\x00\x1E\x69\x5B\xA5\x30"},
+        {"\x00\x1E\x69\x5E\x6A\xE3"},
+        {"\x00\x1E\x69\x5E\xEC\x52"},
+        {"\x00\x1E\x69\x5F\x1D\xF0"},
+        {"\x00\x1E\x69\x6A\xC2\x35"},
+        {"\x00\x1E\x69\x6A\xD6\x03"},
+        {"\x00\x1E\x69\x6A\xE1\xE8"},
+        {"\x00\x1E\x69\x70\xCE\xAD"},
+        {"\x00\x1E\x69\x95\x64\x8C"},
+        {"\x00\x1E\x69\xDC\x05\x39"},
+        {"\x00\x1E\x69\xE1\x75\x93"},
+        {"\x00\x1E\x69\xE1\xC0\xA8"},
+        {"\x00\x1E\x69\xE2\xF9\x7D"},
+        {"\x00\x1E\x69\xE2\xFB\x2D"},
+        {"\x00\x1E\x69\xE3\xBC\xA4"},
+        {"\x00\x1E\x69\xE3\xF3\xCD"},
+        {"\x00\x1E\x69\xEF\xE9\xED"},
+        {"\x00\x1E\x69\xF0\x13\x45"},
+        {"\x00\x1E\x69\xF0\x25\x00"},
+        {"\x00\x1E\x69\xF0\x25\x3C"},
+        {"\x00\x1E\x69\xF0\xE4\x46"},
+        {"\x00\x1E\x69\xF1\xF4\xF8"},
+        {"\x00\x24\xD1\x8E\xBE\xA3"},
+        {"\x00\x24\xD1\x8F\x5D\xBE"},
+        {"\x00\x24\xD1\x8F\x5D\xC4"},
+        {"\x00\x24\xD1\x8F\x79\xFC"},
+        {"\x00\x24\xD1\x91\x97\xD9"},
+        {"\x00\x24\xD1\x91\x98\x9C"},
+        {"\x00\x24\xD1\x92\x20\x1D"},
+        {"\x00\x24\xD1\x92\x35\xCB"},
+        {"\x00\x24\xD1\x92\xFE\x92"},
+        {"\x00\x24\xD1\x96\xEC\x94"},
+        {"\x00\x24\xD1\x97\x97\xDF"},
+        {"\x00\x24\xD1\x97\x98\x7E"},
+        {"\x00\x24\xD1\x98\xA7\x41"}
+};
+
+static size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 
 
-// OPTION 122
-#define	PACKETCABLE	(122)		// dhcp option 122. PACKET CABLE VoIP RFC 
+/*
+ * dhcp option 122
+ * PACKET CABLE VoIP RFC 3495
+ *
+ * sub-option 3 - Provisioning Server's Address:
+ * 			"mps0.cabotva.net." or  "mps.cabotva.net"
+ * sub-option 6 - Kerkeros Realm Name:
+ * 			"BASIC.1" or "HYBRID.2"
+ */ 
+
+#define	PACKETCABLE	(122)		// dhcp option 122. PACKET CABLE VoIP 
 
 
+// tlv option and len
 static uint8_t *opt122_init =   "\x7A\x20";
 
+// original suboptions 3 aand 6 
 static uint8_t *opt122_basic =  "\x03\x13\x00\004mps0\007CABOTVA\003NET\x00"
                                 "\x06\x09\005BASIC\001\x31\x00";
 
+// mangled suboptions 3 aand 6 
 static uint8_t *opt122_hybrid = "\x03\x12\x00\003mps\007CABOTVA\003NET\x00"
                                 "\x06\x0a\006HYBRID\001\x32\x00";
+// option 122 len 
 uint8_t  opt122_len = 0x20;
 
 
-// forward declarations
+/*
+ * forward declarations
+ */
 static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
                 unsigned int option);               
 
-static int8_t is_thg540(uint8_t *chaddr);
+static int is_thg540(mac_t *mac);
+static int mac_inlist(mac_t* mac);
+static int  maccmp(mac_t*  mac1, mac_t* mac2);
 
+
+/*
+ *  out_hookfn
+ *  function to be called by hook
+ */  
 static unsigned int out_hookfn(unsigned int hooknum,            //"const struct nf_hook_ops *ops" for kernel > 2.6.2x
                         struct sk_buff *skb,                  //""struct sk_buf*"  for kernel > 2.6.2x
                         const struct net_device *in, 
@@ -176,8 +268,8 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 		
       	// mac = dhcp->chaddr; 
 	
-	if (is_thg540(mac.data) == FALSE) 
-  		return NF_ACCEPT;                
+//	if (!is_thg540(mac)) 
+//  		return NF_ACCEPT;                
 
 	// adicional check .......
 	// check by HE (Faial and/or Terceira)
@@ -228,7 +320,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 				
 		// DO MEM COPY !!!!!
 
-                memcpy(opt                                                 
+                //memcpy(opt                                                 
                                            
                 // calculete upd checksum
                                 
@@ -254,7 +346,6 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
  *
  *  (c) 2008 The FreeRADIUS server project
  */
-
 static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
                 unsigned int option)                
 {
@@ -329,20 +420,25 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
  *             return TRUE , FALSE
  */ 
 
-static int8_t is_thg540(uint8_t *chaddr) {
+static int is_thg540(mac_t  *mac) 
+{
+	uint8_t *chaddr;
+	uint8_t *p;
+	size_t i;
 
 	//THG540 OUI TABLE
 	//  all OUIs of the Thomson THG540 that we have:
-	//  0011e3, 00189b, 001e69 and 0024d1
         uint8_t *thg540[] =  { "\x00\x11\xe3",
                                "\x00\x18\x9b",
                                "\x00\x1e\x69",
                                "\x00\x24\xd1" };
 
         size_t thg540_len =  sizeof(thg540)/sizeof(thg540[0]);
-        uint8_t *p;
-	size_t i;
 	
+	if (!mac) return FALSE;
+
+	chaddr = mac->data;
+
 	// as all OUI have the '00' int the1st octet.
 	// discart all non '00' starting MACs
 	if (chaddr[0] != '\x00')
@@ -350,14 +446,61 @@ static int8_t is_thg540(uint8_t *chaddr) {
 
         for (i = 0; i < thg540_len; i++) {
                 p =  thg540[i];
-                if ( // chaddr[0] == p[0] &&
-                    chaddr[1] == p[1] &&
-                    chaddr[2] == p[2])
+                if (chaddr[1] == p[1] &&  chaddr[2] == p[2])
                         return TRUE;
         }
         return FALSE;
 }
 
+
+
+/*
+ * int  maccmp(mac_t*  m1, mac_t* m2) 
+ * Compares to mac hardware addreses
+ */
+
+static int  maccmp(mac_t*  mac1, mac_t* mac2)
+{
+	if (!mac1 || !mac2) 
+		return  -1;
+
+	return  memcmp(mac1->data, mac2->data, ETH_ALEN);
+}
+
+
+
+
+/*
+ * int mac_inlist(mac *m)
+ * binary search of a mac in the mac_list. 
+ * returns TRUE(1) if found or FALSE(0) if not found.
+ * mac_list must be in ascending sort order.
+ *
+ */
+
+static int mac_inlist(mac_t* mac)
+{
+	mac_t *base = mac_list;
+	mac_t *pivot;
+	int num = mac_list_len;
+	int result;
+
+	while (num > 0) {
+		pivot = base + (num >>1);
+		result = maccmp(mac, pivot);
+
+		if (result == 0)
+			return TRUE;
+
+		if (result > 0) {
+			base = pivot + 1; 
+			num--;
+		}
+		num >>= 1;
+	}
+
+	return FALSE;
+}
 
 
 /*
