@@ -87,7 +87,7 @@ oui_t thg540_oui[] =  { {"\x00\x18\x9b"},
 typedef struct mac {
          uint8_t     data[ETH_ALEN];
 } mac_t;
-
+/*
 mac_t mac_list[] = { 
 	{"\x00\x18\x9B\x4A\x1B\x31"},
         {"\x00\x18\x9B\x4A\x1B\x3D"},
@@ -99,11 +99,12 @@ mac_t mac_list[] = {
    	{"\x00\x18\x9B\x8A\x50\x8C"},
    	{"\x00\x18\x9B\x8A\x6E\x1D"},
   	{"\x00\x18\x9B\x8A\xAF\x7E"} 	};	
-
-//#include "thg540_migration.c"
+*/
+#include "thg540_migration.h"
 
 size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 
+//mac_t my_mac = {"\x00\x18\x9b\x4a\x1b\x59"};
 mac_t my_mac = {"\x00\x18\x9b\x4a\x1b\x49"};
 
 //#define TESTE	(123)		// test comment
@@ -116,8 +117,9 @@ char buf[1024];
 //int8_t is_thg540(uint8_t *chaddr);
 int  is_thg540(mac_t *m);
 int  maccmp(mac_t*  m1, mac_t* m2);
-int  mac_inlist(mac_t* m);
+int  mac_inlist_sequencial(mac_t* m);
 char *mac_print(mac_t* m); 
+int mac_inlist(mac_t* m);
 
 
 int main(int argc, char** argv) {
@@ -133,14 +135,13 @@ int main(int argc, char** argv) {
 		printf("mac OUI unknow.\n");
 	}
 
-
+/*
 	printf("mac_list size: %d\n", mac_list_len);
 	int i;
 	for (i = 0; i < mac_list_len; i++) {
 		printf("mac_list[%03d]=%s, maccmp=%d\n", i, mac_print(&mac_list[i]), maccmp(&my_mac, &mac_list[i]));
 	}
-
-
+*/
 	if (mac_inlist(&my_mac) == TRUE) {
 		printf("mac is in the list.\n");
 	} else {
@@ -154,18 +155,20 @@ int main(int argc, char** argv) {
 
 //
 // char*  mac_print(mac_t* m) 
+// NOTE: only one call at each time. return only the last lbuf...
 //
 char*  mac_print(mac_t* m) 
 {
+	static char lbuf[256];
 	if (!m){
-		sprintf(buf, "<NULL>");
+		sprintf(lbuf, "<NULL>");
 		
 	} else {
-		sprintf(buf, "%p->[%02x:%02x:%02x:%02x:%02x:%02x]", m,  
+		sprintf(lbuf, "%p->[%02x:%02x:%02x:%02x:%02x:%02x]", m,  
 				m->data[0], m->data[1], m->data[2], 
 				m->data[3], m->data[4], m->data[5] );
 	}
-	return buf;
+	return lbuf;
 
 }
 
@@ -173,12 +176,45 @@ char*  mac_print(mac_t* m)
 
 // int  mac_inlist(mac_t* m)
 // 
-int  mac_inlist(mac_t* m)
+int  mac_inlist_sequencial(mac_t* m)
 {
 	int i;
 	for (i = 0; i < mac_list_len; i++)
 		if (maccmp(m, &mac_list[i]) == 0)
 			return TRUE;
+	return FALSE;
+}
+
+/*
+ * int mac_inlist(mac *m)
+ * binary search of a mac in the mac_list. 
+ * returns TRUE(1) if found or FALSE(0) if not found.
+ * mac_list must be in ascending sort order.
+ *
+ */
+int mac_inlist(mac_t* m)
+{
+	mac_t *base = mac_list;
+	mac_t *pivot;
+	int num = mac_list_len;
+	int result;
+
+	while (num > 0) {
+		pivot = base + (num >>1);
+		result = maccmp(m, pivot);
+
+		// printf("pivot=%s,  maccmp=%d\n", mac_print(pivot), result);
+
+		if (result == 0)
+			return TRUE;
+
+		if (result > 0) {
+			base = pivot + 1; 
+			num--;
+		}
+		num >>= 1;
+	}
+
 	return FALSE;
 }
 
