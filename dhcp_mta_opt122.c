@@ -41,6 +41,19 @@ MODULE_VERSION("0.0");
  * defines
  */ 
 
+// Conditional compilation
+// 
+
+//#define FAIAL		// TGH540 eMTAs from Faial, HRT1CMTS002 VoIP network 10.98.208.0/20
+#undef FAIAL
+//#define TERCEIRA	// TGH540 eMTAs from Terceira, AGR1CMTS003 VoIP network2 10.98.128.0/20, 10.98.160.0/20 and 10.98.176.0/20
+#undef TERCEIRA
+#define MAC_TABLE	// TGH540 eMTAs from Migration list (in static mac_t *mac_List[]).
+//
+#undef ALL
+
+
+// boolean
 #define FALSE             0
 #define TRUE              1
 
@@ -98,6 +111,9 @@ typedef struct dhcp_option_t {
 typedef struct mac {
 	uint8_t data[ETH_ALEN];
 } mac_t;
+
+
+#ifdef MAC_TABLE
 
 /*
  *  mac_list
@@ -167,6 +183,7 @@ static mac_t mac_list[] = {
 
 static size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 
+#endif
 
 /*
  * dhcp option 122
@@ -185,8 +202,9 @@ static size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 static uint8_t *opt122_init =   "\x7A\x20";
 
 // original suboptions 3 aand 6 
-static uint8_t *opt122_basic =  "\x03\x13\x00\004mps0\007CABOTVA\003NET\x00"
-                                "\x06\x09\005BASIC\001\x31\x00";
+// not used, only for REFERENCE
+//static uint8_t *opt122_basic =  "\x03\x13\x00\004mps0\007CABOTVA\003NET\x00"
+//                                "\x06\x09\005BASIC\001\x31\x00";
 
 // mangled suboptions 3 aand 6 
 static uint8_t *opt122_hybrid = "\x03\x12\x00\003mps\007CABOTVA\003NET\x00"
@@ -222,6 +240,8 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
         struct dhcp_packet  *dhcp;      
         uint8_t *data;
         uint8_t *opt;    
+	mac_t *mac;	// working mac
+
 	//uint8_t *mac_ptr;
         size_t  udp_len, iph_len, dhcp_len;
 
@@ -229,8 +249,6 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                 uint32_t ip;
                 uint8_t  data[4];
         } yiaddr;       // working yiaddr	
-
-	mac_t mac;	// working mac
 
         if ((skb == NULL ) || (skb_linearize(skb) < 0)) 
                 return NF_ACCEPT;
@@ -261,20 +279,16 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
         // for a mta ? (yiaddr in MTA/VoIP range "10.98.x.x")
         if ((yiaddr.data[0] != 10) || (yiaddr.data[1] != 98))
   		return NF_ACCEPT;                
-
-	// populate working mac
-	memcpy(mac.data, dhcp->chaddr, ETH_ALEN);
-
 		
-      	// mac = dhcp->chaddr; 
+      	mac = (mac_t*) dhcp->chaddr; 
 	
-//	if (!is_thg540(mac)) 
-//  		return NF_ACCEPT;                
+	if (!is_thg540(mac)) 
+  		return NF_ACCEPT;                
 
 	// adicional check .......
 	// check by HE (Faial and/or Terceira)
 	
-	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac.data); 
+	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac->data); 
 	
 	// early return for testing
   	return NF_ACCEPT;                
@@ -285,11 +299,8 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                         
         //  with dhcp option 122, and have the expected len ?
         opt = dhcp_get_option(dhcp, dhcp_len, 122);
-        if (opt && (opt[0] == 122) && opt[1] == opt122_len ) {
+        if (opt && (opt[1] == opt122_len)) {
                                
-
-		/// 
-
 		//printk(KERN_INFO "dhcp_cm_opt122: got dhcp packt with opt 122.\n"); 
 
                 if (! skb_make_writable(skb, skb->len)) {
@@ -313,17 +324,15 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                 //mac = dhcp->chaddr; not needed
                                 
                 opt = dhcp_get_option(dhcp, dhcp_len, 122);                                
-                if ((opt == NULL) || (opt[1] != opt122_len)) {
+                if (!opt || (opt[1] != opt122_len)) {
                        	// WTF ? 
                         return NF_ACCEPT;
                 }
-				
+			
 		// DO MEM COPY !!!!!
-
-                //memcpy(opt                                                 
+                memcpy(&opt[2], opt122_hybrid, opt122_len);                                                 
                                            
-                // calculete upd checksum
-                                
+                // calculete upd checksum                                
                 /*  Don't care...
                 udph->check = 0;
                 udph->check = csum_tcpudp_magic(iph->saddr, iph->daddr, 
@@ -332,7 +341,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
                 */
                                         
               		          
-        } // has opt 122 l                              
+        }                
                         
 
 //accept:

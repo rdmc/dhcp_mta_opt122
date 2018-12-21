@@ -72,7 +72,6 @@ typedef struct dhcp_packet {
 
 unsigned char client_hardware_address[MAX_DHCP_CHADDR_LENGTH]="";
 unsigned int my_client_mac[MAX_DHCP_CHADDR_LENGTH];
-int mymac = 0;
 
 
 //OUI TABLE
@@ -107,6 +106,8 @@ size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 //mac_t my_mac = {"\x00\x18\x9b\x4a\x1b\x59"};
 mac_t my_mac = {"\x00\x18\x9b\x4a\x1b\x49"};
 
+mac_t *mm;
+
 //#define TESTE	(123)		// test comment
 
 
@@ -135,6 +136,16 @@ int main(int argc, char** argv) {
 		printf("mac OUI unknow.\n");
 	}
 
+	dhcp_packet_t dd;
+	mm = (mac_t*) dd.chaddr;
+	int i;
+	uint8_t *p;
+	p = (uint8_t*) &dd;
+	for (i = 0; i < sizeof(dhcp_packet_t); i++){
+		*p = (uint8_t) i;
+		p++;
+	} 	
+	printf("mm is %s\n", mac_print(mm));
 /*
 	printf("mac_list size: %d\n", mac_list_len);
 	int i;
