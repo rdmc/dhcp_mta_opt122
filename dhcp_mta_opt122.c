@@ -201,12 +201,12 @@ static size_t mac_list_len = sizeof(mac_list)/sizeof(mac_t);
 // tlv option and len
 static uint8_t *opt122_init =   "\x7A\x20";
 
-// original suboptions 3 aand 6 
+// original suboptions 3 and 6 
 // not used, only for REFERENCE
 //static uint8_t *opt122_basic =  "\x03\x13\x00\004mps0\007CABOTVA\003NET\x00"
 //                                "\x06\x09\005BASIC\001\x31\x00";
 
-// mangled suboptions 3 aand 6 
+// mangled suboptions 3 and 6 
 static uint8_t *opt122_hybrid = "\x03\x12\x00\003mps\007CABOTVA\003NET\x00"
                                 "\x06\x0a\006HYBRID\001\x32\x00";
 // option 122 len 
@@ -220,8 +220,10 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
                 unsigned int option);               
 
 static int is_thg540(mac_t *mac);
-static int mac_inlist(mac_t* mac);
 static int  maccmp(mac_t*  mac1, mac_t* mac2);
+#ifdef MAC_TABLE
+static int mac_inlist(mac_t* mac);
+#endif
 
 
 /*
@@ -282,18 +284,18 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 		
       	mac = (mac_t*) dhcp->chaddr; 
 
-	// is the a thg520 !!!!	
+	// mac is a thg520 eMTA ? 	
 	if (!is_thg540(mac)) 
   		return NF_ACCEPT;                
 	
-	// check by HE (Faial and/or Terceira)
-	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac->data); 
+	// DEBUG:
+	//printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac->data); 
 	
 
 	// check by HE (Faial and/or Terceira)
 
 	if  (true &&
-#ifdef	FAILA
+#ifdef	FAIAL
 // thg540 from Faial network 10.98.208.0/20 
 		(yiaddr.data[2] & 0xf0 != 208) &&
 #endif
@@ -310,17 +312,16 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 		true )
 			return NF_ACCEPT;
 	
-	printk(KERN_INFO "dhcp_cm_opt122: THG540: %pM will be mangled.\n", mac->data); 
-	//
-  	return NF_ACCEPT;                
+	// DEBUG:
+	//printk(KERN_INFO "dhcp_cm_opt122: THG540: %pM will be mangled.\n", mac->data); 
+  	//return NF_ACCEPT;                
          
                
-        //  with dhcp option 122, and have the expected len ?
+        // get dhcp option 122, and check length
         opt = dhcp_get_option(dhcp, dhcp_len, 122);
         if (opt && (opt[1] == opt122_len)) {
-                               
-		//printk(KERN_INFO "dhcp_cm_opt122: got dhcp packt with opt 122.\n"); 
-
+                 
+		// make socket buffer awritable              
                 if (! skb_make_writable(skb, skb->len)) {
                        	//printk(KERN_INFO "dhcp_cm_opt122: skb_make_writable Failed.\n"); 
                         return NF_ACCEPT;
