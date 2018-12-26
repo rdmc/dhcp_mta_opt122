@@ -281,22 +281,40 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
   		return NF_ACCEPT;                
 		
       	mac = (mac_t*) dhcp->chaddr; 
-	
+
+	// is the a thg520 !!!!	
 	if (!is_thg540(mac)) 
   		return NF_ACCEPT;                
-
-	// adicional check .......
-	// check by HE (Faial and/or Terceira)
 	
+	// check by HE (Faial and/or Terceira)
 	printk(KERN_INFO "dhcp_cm_opt122: got a THG540: %pM \n", mac->data); 
 	
-	// early return for testing
-  	return NF_ACCEPT;                
 
-	// is the a thg520 !!!!
+	// check by HE (Faial and/or Terceira)
+
+	if  (true &&
+#ifdef	FAILA
+// thg540 from Faial network 10.98.208.0/20 
+		(yiaddr.data[2] & 0xf0 != 208) &&
+#endif
+#ifdef	TERCEIRA
+// thg540 from Terceira networks 10.98.128.0/20, 10.98.160.0/20 AND 10.98.176.0/24 
+		(yiaddr.data[2] & 0xf0 != 128) &&
+		(yiaddr.data[2] & 0xf0 != 160) &&
+		(yiaddr.data[2] & 0xf0 != 176) &&
+#endif
+#ifdef	MAC_TABLE
+// THG540 MAC IN OUWER LIST
+		!mac_inlist(mac) &&
+#endif
+		true )
+			return NF_ACCEPT;
+	
+	printk(KERN_INFO "dhcp_cm_opt122: THG540: %pM will be mangled.\n", mac->data); 
 	//
-
-                        
+  	return NF_ACCEPT;                
+         
+               
         //  with dhcp option 122, and have the expected len ?
         opt = dhcp_get_option(dhcp, dhcp_len, 122);
         if (opt && (opt[1] == opt122_len)) {
@@ -477,7 +495,7 @@ static int  maccmp(mac_t*  mac1, mac_t* mac2)
 }
 
 
-
+#ifdef MAC_TABLE
 
 /*
  * int mac_inlist(mac *m)
@@ -511,6 +529,7 @@ static int mac_inlist(mac_t* mac)
 	return FALSE;
 }
 
+#endif
 
 /*
  *  netfilter hock & kernel module stuff
@@ -530,6 +549,7 @@ static void mangle_cleanup(void)
 {
         nf_unregister_hook(&nfho_out);
 }
+
 
 static void __exit mangle_fini(void)
 {
