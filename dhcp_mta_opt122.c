@@ -555,7 +555,7 @@ static void mangle_cleanup(void)
 
 static void __exit mangle_fini(void)
 {
-        printk(KERN_INFO "module dhcp_opt122, cleanup...\n");
+        printk(KERN_INFO "module dhcp_mta_opt122, cleanup...\n");
         mangle_cleanup();
 }
 
@@ -563,11 +563,11 @@ static void __exit mangle_fini(void)
 static int __init mangle_init(void)
 {
         int ret = 0;
-        printk(KERN_INFO "module dhcp_cm_opt123, init...\n");
+        printk(KERN_INFO "module dhcp_mta_opt123, init...\n");
 
         ret = nf_register_hook(&nfho_out);
         if (ret) {
-            printk(KERN_ERR "dhcp_cm_opt122: failed to register");
+            printk(KERN_ERR "dhcp_mta_opt122: failed to register");
             mangle_cleanup();
         }
 
