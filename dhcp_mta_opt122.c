@@ -48,7 +48,7 @@ MODULE_VERSION("0.0");
 #undef FAIAL
 //#define TERCEIRA	// TGH540 eMTAs from Terceira, AGR1CMTS003 VoIP network2 10.98.128.0/20, 10.98.160.0/20 and 10.98.176.0/20
 #undef TERCEIRA
-#define MAC_TABLE	// TGH540 eMTAs from Migration list (in static mac_t *mac_List[]).
+#undef MAC_TABLE	// TGH540 eMTAs from Migration list (in static mac_t *mac_List[]).
 //
 #undef ALL
 
@@ -294,6 +294,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 
 	// check by HE (Faial and/or Terceira)
 
+/* 
 	if  (true &&
 #ifdef	FAIAL
 // thg540 from Faial network 10.98.208.0/20 
@@ -310,7 +311,7 @@ static unsigned int out_hookfn(unsigned int hooknum,            //"const struct 
 		!mac_inlist(mac) &&
 #endif
 		true )
-			return NF_ACCEPT;
+*/			return NF_ACCEPT;
 	
 	// DEBUG:
 	//printk(KERN_INFO "dhcp_cm_opt122: THG540: %pM will be mangled.\n", mac->data); 
